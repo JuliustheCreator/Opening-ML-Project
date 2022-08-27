@@ -1,6 +1,5 @@
 from calendar import c
 import pandas as pd
-import numpy as np
 import requests
 from chessdotcom import get_player_stats, get_player_game_archives
 import chess.pgn
@@ -87,15 +86,35 @@ def get_variation(game):
 
     return time_control, variation
 
+#Grabs Opening Name from Game
+def get_opening_name(pgn):
+    pgn = StringIO(pgn)
+    game = chess.pgn.read_game(pgn)
+    ECO_url = game.headers['ECOUrl']
+    
+    #Grabbing Substring (Contains Opening Name) from ECO Url
+    i = 31
+    opening_name = ""
+    while i != len(ECO_url):
+        if ECO_url[i] == "-":
+            opening_name += " "
+            continue
+        opening_name += ECO_url[i]
+        i += 1
+    return opening_name
+
+
 
 #Collecting All Recently Played Openings -> (ECO_list)
 white_eco = []
 white_fen = []
 white_result = []
+white_names = []
 
 black_fen = []
 black_eco = []
 black_result = []
+black_names = []
 
 all_games = get_player_games(username)
 for monthly_games in all_games:
@@ -107,19 +126,23 @@ for monthly_games in all_games:
             white_eco.append(get_ECO(game['pgn']))
             white_fen.append(get_FEN(game))
             white_result.append(check_for_win(game, get_side(game)))
+            white_names.append(get_opening_name(game['pgn']))
         else:
             black_eco.append(get_ECO(game['pgn']))
             black_fen.append(get_FEN(game))
             black_result.append(check_for_win(game, get_side(game)))
+            black_names.append(get_opening_name(game['pgn']))
 
 #Creating Seperate Dataframes Depending on if Player is Black or White
 blackdf = pd.DataFrame()
 whitedf = pd.DataFrame()
 
+blackdf['Name'] = black_names
 blackdf['ECO'] = black_eco
 blackdf['FEN'] = black_fen
 blackdf['Result'] = black_result
 
+whitedf['Name'] = white_names
 whitedf['ECO'] = white_eco
 whitedf['FEN'] = white_fen
 whitedf['Result'] = white_result
@@ -140,4 +163,12 @@ def fen_to_vector(fen):
 whitedf['Vector'] = whitedf['FEN'].apply(fen_to_vector)
 blackdf['Vector'] = blackdf['FEN'].apply(fen_to_vector)
 
+'''
+Grabbing The User's Rating.
+Only the User's Rating & The Openings They Play Will Be Taken Into Account in Choosing New Openings.
+'''
+user_rating = get_player_rating(username)
 
+#Creating A Vector For Every Openings in the ECO
+print(blackdf.head())
+print(whitedf.head())
