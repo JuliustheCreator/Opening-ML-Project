@@ -6,6 +6,10 @@ from chessdotcom import get_player_stats, get_player_game_archives
 import chess.pgn
 from io import StringIO
 
+'''
+Preparing LiChess Dataframe:
+    Will Be Used To Compare Openings With Respect To Rating (Collaborate-Based Filtering)
+'''
 
 username = input("Input Player Name: ")
 
@@ -41,6 +45,7 @@ def get_player_games(username):
             new = True
     else:
         urls = games['archives'][-6:]
+
     for url in urls:
         monthly_games = requests.get(url).json()
         all_games.append(monthly_games)
@@ -119,5 +124,20 @@ whitedf['ECO'] = white_eco
 whitedf['FEN'] = white_fen
 whitedf['Result'] = white_result
 
-print(blackdf.head())
-print(whitedf.head())
+#Converts FEN to Vector which Can Be Used To Compare Different Positions
+def fen_to_vector(fen):
+    pieces = {"r":5,"n":3,"b":3.5,"q":9.5,"k":20,"p":1,"R":-5,"N":-3,"B":-3.5,"Q":-9.5,"K":-20,"P":-1}
+    fen = list(str(fen.split()[0]))
+    vector = []
+    for i in range(len(fen)):
+        if fen[i] == "/":
+            continue
+        if fen[i] in pieces:
+            vector.append(pieces[fen[i]])
+    return vector
+
+#Adding Vector Columnn to Dataframes
+whitedf['Vector'] = whitedf['FEN'].apply(fen_to_vector)
+blackdf['Vector'] = blackdf['FEN'].apply(fen_to_vector)
+
+
