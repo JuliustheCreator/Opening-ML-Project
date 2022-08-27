@@ -29,6 +29,7 @@ If the player is "new" then bullet games will be used.
 '''
 
 new = False
+
 #Retrives Last 6 Months of Games Played; Checks To See if Player is New
 def get_player_games(username):
     all_games = []
@@ -53,6 +54,24 @@ def get_ECO(pgn):
     ECO = game.headers['ECO']
     return ECO
 
+#Grabs FEN from Game
+def get_FEN(game):
+    FEN = game['fen']
+    return FEN
+
+#Grabs Side (White or Black): 0 for Black, 1 for White
+def get_side(game):
+    side = game['white']['username']
+    if side == username:
+        return 'white'
+    return 'black'
+
+#Checks If Player Won
+def check_for_win(game, side):
+    if game[side]['result'] == 'win':
+        return 1
+    return 0
+    
 
 #Grabs Game Variation & Time Control
 def get_variation(game):
@@ -65,13 +84,40 @@ def get_variation(game):
 
 
 #Collecting All Recently Played Openings -> (ECO_list)
-ECO_list = []
+white_eco = []
+white_fen = []
+white_result = []
+
+black_fen = []
+black_eco = []
+black_result = []
+
 all_games = get_player_games(username)
 for monthly_games in all_games:
     for game in monthly_games['games']:
         if not new:
             if get_variation(game)[0] == 'bullet' or get_variation(game)[1] != 'chess':
                 continue
-        ECO_list.append(get_ECO(game['pgn']))
+        if get_side(game):
+            white_eco.append(get_ECO(game['pgn']))
+            white_fen.append(get_FEN(game))
+            white_result.append(check_for_win(game, get_side(game)))
+        else:
+            black_eco.append(get_ECO(game['pgn']))
+            black_fen.append(get_FEN(game))
+            black_result.append(check_for_win(game, get_side(game)))
 
+#Creating Seperate Dataframes Depending on if Player is Black or White
+blackdf = pd.DataFrame()
+whitedf = pd.DataFrame()
 
+blackdf['ECO'] = black_eco
+blackdf['FEN'] = black_fen
+blackdf['Result'] = black_result
+
+whitedf['ECO'] = white_eco
+whitedf['FEN'] = white_fen
+whitedf['Result'] = white_result
+
+print(blackdf.head())
+print(whitedf.head())
