@@ -1,9 +1,10 @@
-from calendar import c
 import pandas as pd
 import requests
 from chessdotcom import get_player_stats, get_player_game_archives
 import chess.pgn
 from io import StringIO
+import scipy
+from scipy.spatial import distance
 
 '''
 Preparing LiChess Dataframe:
@@ -15,7 +16,6 @@ username = input("Input Player Name: ")
 #Chooses Highest Rating Between Rapid and Blitz
 def get_player_rating(username):
     playerinfo = get_player_stats(username).json
-    print(playerinfo)
     timecontrols = ['chess_rapid', 'chess_blitz']
     ratings = []
 
@@ -91,21 +91,13 @@ def get_opening_name(pgn):
     pgn = StringIO(pgn)
     game = chess.pgn.read_game(pgn)
     ECO_url = game.headers['ECOUrl']
-    
-    #Grabbing Substring (Contains Opening Name) from ECO Url
-    i = 31
-    opening_name = ""
-    while i != len(ECO_url):
-        if ECO_url[i] == "-":
-            opening_name += " "
-            continue
-        opening_name += ECO_url[i]
-        i += 1
-    return opening_name
+
+    #Grabbing Substring (Contains Opening Name) from ECO Url 
+    opening_name = ECO_url[31:]
+    return opening_name.replace('-',' ')
 
 
-
-#Collecting All Recently Played Openings -> (ECO_list)
+#Collecting All Recently Played Openings
 white_eco = []
 white_fen = []
 white_result = []
@@ -122,7 +114,7 @@ for monthly_games in all_games:
         if not new:
             if get_variation(game)[0] == 'bullet' or get_variation(game)[1] != 'chess':
                 continue
-        if get_side(game):
+        if get_side(game) == 'white':
             white_eco.append(get_ECO(game['pgn']))
             white_fen.append(get_FEN(game))
             white_result.append(check_for_win(game, get_side(game)))
@@ -147,28 +139,33 @@ whitedf['ECO'] = white_eco
 whitedf['FEN'] = white_fen
 whitedf['Result'] = white_result
 
-#Converts FEN to Vector which Can Be Used To Compare Different Positions
-def fen_to_vector(fen):
-    pieces = {"r":5,"n":3,"b":3.5,"q":9.5,"k":20,"p":1,"R":-5,"N":-3,"B":-3.5,"Q":-9.5,"K":-20,"P":-1}
-    fen = list(str(fen.split()[0]))
-    vector = []
-    for i in range(len(fen)):
-        if fen[i] == "/":
-            continue
-        if fen[i] in pieces:
-            vector.append(pieces[fen[i]])
-    return vector
-
-#Adding Vector Columnn to Dataframes
-whitedf['Vector'] = whitedf['FEN'].apply(fen_to_vector)
-blackdf['Vector'] = blackdf['FEN'].apply(fen_to_vector)
-
 '''
 Grabbing The User's Rating.
 Only the User's Rating & The Openings They Play Will Be Taken Into Account in Choosing New Openings.
 '''
 user_rating = get_player_rating(username)
 
-#Creating A Vector For Every Openings in the ECO
-print(blackdf.head())
-print(whitedf.head())
+#Creating Dataframe using Lichess Game Dataset
+lichessgames = pd.read_csv('games.csv')
+lichessgames = lichessgames[['opening_name','opening_eco','white_rating','black_rating','winner']]
+
+lichessgames.rename(columns = {'opening_name':'Name', 'opening_eco':'ECO'}, inplace = True)
+
+#Creating Seperate Dataframes for White / Black Winners
+grouped = lichessgames.groupby(lichessgames.winner)
+whitelichessgames = grouped.get_group("white")
+blacklichessgames = grouped.get_group("black")
+
+whitelichessgames.reset_index(inplace = True, drop = True)
+blacklichessgames.reset_index(inplace = True, drop = True)
+
+whitelichessgames.drop(['black_rating', 'winner'], axis = 1, inplace = True)
+blacklichessgames.drop(['white_rating','winner'], axis = 1, inplace = True)
+
+#Adding Frequency Column in Player Dataframe
+whitedf['Frequency'] = whitedf['Name'].map(whitedf['Name'].value_counts(normalize=True) * 100)
+blackdf['Frequency'] = blackdf['Name'].map(blackdf['Name'].value_counts(normalize=True) * 100)
+
+#Deleting Duplicate Openings in Player Dataframe
+whitedf.drop_duplicates(subset = 'Name', inplace = True)
+blackdf.drop_duplicates(subset = 'Name', inplace = True)
