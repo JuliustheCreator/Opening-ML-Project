@@ -1,4 +1,5 @@
 import pandas as pd
+import sys
 import requests
 from chessdotcom import get_player_stats, get_player_game_archives
 import chess.pgn
@@ -10,14 +11,17 @@ from scipy.spatial import distance
 Preparing LiChess Dataframe:
     Will Be Used To Compare Openings With Respect To Rating (Collaborate-Based Filtering)
 '''
-try:
-    username = input("Input Player Name: ")
-except:
-    "User Not Found"
+    
+username = input("Input Player Name: ")
 
 #Chooses Highest Rating Between Rapid and Blitz
 def get_player_rating(username):
-    playerinfo = get_player_stats(username).json
+    try:
+        playerinfo = get_player_stats(username).json
+    except:
+        print("User Not Found.")
+        return None
+
     timecontrols = ['chess_rapid', 'chess_blitz']
     ratings = []
 
@@ -83,9 +87,7 @@ def check_for_win(game, side):
 def get_variation(game):
     time_control = game['time_class']
     variation = game['rules']
-
     #Variation should be "Chess" for Normal Games
-
     return time_control, variation
 
 #Grabs Opening Name from Game
@@ -93,7 +95,6 @@ def get_opening_name(pgn):
     pgn = StringIO(pgn)
     game = chess.pgn.read_game(pgn)
     ECO_url = game.headers['ECOUrl']
-
     #Grabbing Substring (Contains Opening Name) from ECO Url 
     opening_name = ECO_url[31:]
     return opening_name.replace('-',' ')
@@ -109,6 +110,12 @@ black_fen = []
 black_eco = []
 black_result = []
 black_names = []
+
+try:
+    get_player_games(username)
+except:
+    print("User Not Found.")
+    sys.exit()
 
 all_games = get_player_games(username)
 for monthly_games in all_games:
@@ -145,7 +152,9 @@ whitedf['Result'] = white_result
 Grabbing The User's Rating.
 Only the User's Rating & The Openings They Play Will Be Taken Into Account in Choosing New Openings.
 '''
+
 user_rating = get_player_rating(username)
+
 
 #Creating Dataframe using Lichess Game Dataset
 lichessgames = pd.read_csv('games.csv')
@@ -189,12 +198,3 @@ blackdf.drop_duplicates(subset = 'Name', inplace = True)
 #Adding on Win Rate Column
 white_win_rate = list(white_win_rate['Count'])
 black_win_rate = list(black_win_rate['Count'])
-
-print(white_win_rate)
-print(black_win_rate)
-
-whitedf['Win Rate'] = white_win_rate
-blackdf['Win Rate'] = black_win_rate
-
-print(whitedf)
-print(blackdf)
