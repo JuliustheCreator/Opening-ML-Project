@@ -10,8 +10,10 @@ from scipy.spatial import distance
 Preparing LiChess Dataframe:
     Will Be Used To Compare Openings With Respect To Rating (Collaborate-Based Filtering)
 '''
-
-username = input("Input Player Name: ")
+try:
+    username = input("Input Player Name: ")
+except:
+    "User Not Found"
 
 #Chooses Highest Rating Between Rapid and Blitz
 def get_player_rating(username):
@@ -160,12 +162,39 @@ whitelichessgames.reset_index(inplace = True, drop = True)
 blacklichessgames.reset_index(inplace = True, drop = True)
 
 whitelichessgames.drop(['black_rating', 'winner'], axis = 1, inplace = True)
-blacklichessgames.drop(['white_rating','winner'], axis = 1, inplace = True)
+blacklichessgames.drop(['white_rating', 'winner'], axis = 1, inplace = True)
 
-#Adding Frequency Column in Player Dataframe
-whitedf['Frequency'] = whitedf['Name'].map(whitedf['Name'].value_counts(normalize=True) * 100)
-blackdf['Frequency'] = blackdf['Name'].map(blackdf['Name'].value_counts(normalize=True) * 100)
+#Adding Frequency Column to Player Dataframe
+whitedf['Frequency'] = whitedf['Name'].map(whitedf['Name'].value_counts(normalize = True) * 100)
+blackdf['Frequency'] = blackdf['Name'].map(blackdf['Name'].value_counts(normalize = True) * 100)
+
+#Sorting by Most Played Openings
+whitedf.sort_values(by = ['Frequency'], inplace = True, ascending = False)
+blackdf.sort_values(by = ['Frequency'], inplace = True, ascending = False)
+
+#Creating Win Rate Column for Player Dataframe
+white_win_rate = whitedf.rename(columns = {"Result":"Count"}).groupby("Name").sum().reset_index()
+black_win_rate = blackdf.rename(columns = {"Result":"Count"}).groupby("Name").sum().reset_index()
+
+white_win_rate = pd.DataFrame(white_win_rate)
+black_win_rate = pd.DataFrame(black_win_rate)
+
+white_win_rate.sort_values(by = ['Frequency'], inplace = True, ascending = False)
+black_win_rate.sort_values(by = ['Frequency'], inplace = True, ascending = False)
 
 #Deleting Duplicate Openings in Player Dataframe
 whitedf.drop_duplicates(subset = 'Name', inplace = True)
 blackdf.drop_duplicates(subset = 'Name', inplace = True)
+
+#Adding on Win Rate Column
+white_win_rate = list(white_win_rate['Count'])
+black_win_rate = list(black_win_rate['Count'])
+
+print(white_win_rate)
+print(black_win_rate)
+
+whitedf['Win Rate'] = white_win_rate
+blackdf['Win Rate'] = black_win_rate
+
+print(whitedf)
+print(blackdf)
