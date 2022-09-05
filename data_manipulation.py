@@ -31,7 +31,6 @@ def get_player_rating(username):
         return ratings[0]
     return ratings[1]
 
-
 '''
 The "new" variable is true if the player has not played longer than 3 months.
 If the player is "new" then bullet games will be used.
@@ -55,7 +54,6 @@ def get_player_games(username):
         monthly_games = requests.get(url).json()
         all_games.append(monthly_games)
     return all_games
-
 
 #Grabs ECO (Opening ID) From PGN
 def get_ECO(pgn):
@@ -82,7 +80,6 @@ def check_for_win(game, side):
         return 1
     return 0
     
-
 #Grabs Game Variation & Time Control
 def get_variation(game):
     time_control = game['time_class']
@@ -99,6 +96,12 @@ def get_opening_name(pgn):
     opening_name = ECO_url[31:]
     return opening_name.replace('-',' ')
 
+#Extracts Opening Name Without Using Chess Module
+def extract_opening_name(pgn):
+    pgn = pgn.split('\n')
+    url = pgn[11]
+    name = url.split('/')[-1] 
+    return name[:-2].replace('-',' ')
 
 #Collecting All Recently Played Openings
 white_eco = []
@@ -155,24 +158,6 @@ Only the User's Rating & The Openings They Play Will Be Taken Into Account in Ch
 
 user_rating = get_player_rating(username)
 
-
-#Creating Dataframe using Lichess Game Dataset
-lichessgames = pd.read_csv('games.csv')
-lichessgames = lichessgames[['opening_name','opening_eco','white_rating','black_rating','winner']]
-
-lichessgames.rename(columns = {'opening_name':'Name', 'opening_eco':'ECO'}, inplace = True)
-
-#Creating Seperate Dataframes for White / Black Winners
-grouped = lichessgames.groupby(lichessgames.winner)
-whitelichessgames = grouped.get_group("white")
-blacklichessgames = grouped.get_group("black")
-
-whitelichessgames.reset_index(inplace = True, drop = True)
-blacklichessgames.reset_index(inplace = True, drop = True)
-
-whitelichessgames.drop(['black_rating', 'winner'], axis = 1, inplace = True)
-blacklichessgames.drop(['white_rating', 'winner'], axis = 1, inplace = True)
-
 #Adding Frequency Column to Player Dataframe
 whitedf['Frequency'] = whitedf['Name'].map(whitedf['Name'].value_counts(normalize = True) * 100)
 blackdf['Frequency'] = blackdf['Name'].map(blackdf['Name'].value_counts(normalize = True) * 100)
@@ -191,6 +176,10 @@ black_win_rate = pd.DataFrame(black_win_rate)
 white_win_rate.sort_values(by = ['Frequency'], inplace = True, ascending = False)
 black_win_rate.sort_values(by = ['Frequency'], inplace = True, ascending = False)
 
+#Number of Openings - Needed For Calculating Number of Same Opening
+whiteopcount = len(whitedf)
+blackopcount = len(blackdf)
+
 #Deleting Duplicate Openings in Player Dataframe
 whitedf.drop_duplicates(subset = 'Name', inplace = True)
 blackdf.drop_duplicates(subset = 'Name', inplace = True)
@@ -198,3 +187,78 @@ blackdf.drop_duplicates(subset = 'Name', inplace = True)
 #Adding on Win Rate Column
 white_win_rate = list(white_win_rate['Count'])
 black_win_rate = list(black_win_rate['Count'])
+
+whitedf['Win Rate'] = white_win_rate
+blackdf['Win Rate'] = black_win_rate
+
+white_op_win_percent = whitedf['Frequency'].multiply(0.01).apply(lambda x: x * whiteopcount)
+black_op_win_percent = blackdf['Frequency'].multiply(0.01).apply(lambda x: x * blackopcount)
+
+whitedf['Win Rate'] = whitedf['Win Rate'].div(white_op_win_percent).multiply(100)
+blackdf['Win Rate'] = blackdf['Win Rate'].div(black_op_win_percent).multiply(100)
+
+whitedf.drop(['Result'], axis = 1, inplace = True)
+blackdf.drop(['Result'], axis = 1, inplace = True)
+
+#Creating Dataframe using Lichess Game Dataset
+#lichessgames = pd.read_csv('games.csv')
+'''
+lichessgames = lichessgames[['opening_name','opening_eco','white_rating','black_rating','winner','white_id','black_id']]
+
+lichessgames.rename(columns = {'opening_name':'Name', 'opening_eco':'ECO'}, inplace = True)
+
+#Creating Seperate Dataframes for White / Black Winners
+
+grouped = lichessgames.groupby(lichessgames.winner)
+whitelichessgames = grouped.get_group("white")
+blacklichessgames = grouped.get_group("black")
+
+whitelichessgames.drop(['black_rating', 'winner'], axis = 1, inplace = True)
+blacklichessgames.drop(['white_rating', 'winner'], axis = 1, inplace = True)
+
+whitelichessgames = whitelichessgames.groupby('white_id')
+blacklichessgames = blacklichessgames.groupby('black_id')
+
+whitelichessgames = pd.DataFrame(whitelichessgames)
+blacklichessgames = pd.DataFrame(blacklichessgames)
+
+#whitelichessgames.reset_index(inplace = True, drop = True)
+#blacklichessgames.reset_index(inplace = True, drop = True)
+
+
+lichessgames = (pd.concat(
+    [lichessgames.groupby('white_id')['opening_name'].value_counts(),
+    lichessgames.groupby('black_id')['opening_name'].value_counts()])
+    .rename(index='openings_used').reset_index().rename(columns={'white_id': 'player_id', 'openings_used': 'times_used'}).groupby(['player_id', 'opening_name']).sum())
+'''
+
+#Doesn't Return List Unlike "get_variation()"
+def validate_variation(game):
+    pgn = StringIO(game['pgn'])
+    game_pgn = chess.pgn.read_game(pgn)
+    event = game_pgn['pgn'].headers['Event']
+    if event != "Live Chess":
+        del game
+    variation = game['rules']
+    if variation != "normal":
+        del game
+
+'''
+Preparing LiChess Dataframe:
+    Will Be Used To Compare Openings With Respect To Rating (Collaborate-Based Filtering)
+'''
+
+#Creating Chess.com Dataframe from 60,000+ Games
+chesscomgames = pd.read_csv('chessgames.csv')
+chesscomgames = chesscomgames[['white_username','black_username','pgn','white_rating','black_rating','white_result','black_result']]
+
+#Creating Opening Name for Each Game
+chesscomgames['Opening Name'] = chesscomgames['pgn'].apply(extract_opening_name)
+chesscomgames.drop(['pgn'], axis = 1, inplace = True)
+
+#Seperating User Profile for Each User in Chess.com Dataframe
+grouped_chesscomgames = pd.concat([chesscomgames.groupby(chesscomgames.white_username), chesscomgames.groupby(chesscomgames.black_username)])
+
+print(grouped_chesscomgames)
+
+print(chesscomgames.head())
