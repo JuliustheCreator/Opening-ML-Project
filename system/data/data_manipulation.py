@@ -4,8 +4,6 @@ import requests
 from chessdotcom import get_player_stats, get_player_game_archives
 import chess.pgn
 from io import StringIO
-import scipy
-from scipy.spatial import distance
 
 '''
 Preparing LiChess Dataframe:
@@ -100,8 +98,14 @@ def get_opening_name(pgn):
 def extract_opening_name(pgn):
     pgn = pgn.split('\n')
     url = pgn[11]
+    if url[23:31] != "openings":
+        for data in pgn:
+            if data[23:31] == "openings":
+                url = data
+                break
     name = url.split('/')[-1] 
-    return name[:-2].replace('-',' ')
+    name = name[:-3].replace('-',' ')
+    return name
 
 #Collecting All Recently Played Openings
 white_eco = []
@@ -216,13 +220,23 @@ Preparing Chess.com Dataframe:
     Will Be Used To Compare Openings With Respect To Rating (Collaborate-Based Filtering)
 '''
 
-#Creating Chess.com Dataframe from 60,000+ Games
-chesscomgames = pd.read_csv('chesscomgames.csv')
+#Creating Chess.com Dataframe from 40,000 Games & 37,000+ Users
+chesscomgames = pd.read_csv('system/data/chesscomgames.csv')
 chesscomgames = chesscomgames[['white_username','black_username','pgn','white_rating','black_rating','white_result','black_result']]
 
 #Creating Opening Name for Each Game
 chesscomgames['Opening Name'] = chesscomgames['pgn'].apply(extract_opening_name)
 chesscomgames.drop(['pgn'], axis = 1, inplace = True)
 
+
 #Seperating User Profile for Each User in Chess.com Dataframe
-grouped_chesscomgames = pd.concat([chesscomgames.groupby(chesscomgames.white_username), chesscomgames.groupby(chesscomgames.black_username)])
+
+def calculate_frequency(row):
+    frequency = whitedf['Opening Name'].map(whitedf['Opening Name'].value_counts(normalize = True) * 100)
+
+chesscomgame_groupby_username = chesscomgames.groupby(["white_username", "black_username"]).agg(lambda x: list(x))
+
+white_chesscomgame_df = []
+black_chesscomgame_df = []
+
+print(chesscomgame_groupby_username)
