@@ -98,13 +98,12 @@ def get_opening_name(pgn):
 def extract_opening_name(pgn):
     pgn = pgn.split('\n')
     url = pgn[11]
-    if url[23:31] != "openings":
-        for data in pgn:
-            if data[23:31] == "openings":
-                url = data
-                break
+    for data in pgn:
+        if data[1:7] == "ECOUrl":
+            url = data
+            break
     name = url.split('/')[-1] 
-    name = name[:-3].replace('-',' ')
+    name = name[:-2].replace('-',' ')
     return name
 
 #Collecting All Recently Played Openings
@@ -215,6 +214,13 @@ def validate_variation(game):
     if variation != "normal":
         del game
 
+#Creating User Item Matrix using User Data
+print(whitedf)
+print(blackdf)
+
+whitedf = pd.DataFrame(index = whitedf['Opening Name'].unique(), columns = whitedf['Opening Name'].unique())
+blackdf = pd.DataFrame(index = blackdf['Opening Name'].unique(), columns = blackdf['Opening Name'].unique())
+
 '''
 Preparing Chess.com Dataframe:
     Will Be Used To Compare Openings With Respect To Rating (Collaborate-Based Filtering)
@@ -228,15 +234,18 @@ chesscomgames = chesscomgames[['white_username','black_username','pgn','white_ra
 chesscomgames['Opening Name'] = chesscomgames['pgn'].apply(extract_opening_name)
 chesscomgames.drop(['pgn'], axis = 1, inplace = True)
 
-
 #Seperating User Profile for Each User in Chess.com Dataframe
+white_users = pd.DataFrame(index = chesscomgames['white_username'].unique(), columns = chesscomgames['Opening Name'].unique())
+black_users = pd.DataFrame(index = chesscomgames['black_username'].unique(), columns = chesscomgames['Opening Name'].unique())
 
-def calculate_frequency(row):
-    frequency = whitedf['Opening Name'].map(whitedf['Opening Name'].value_counts(normalize = True) * 100)
+#Creating Item Matrix using Chess.com Data
 
-chesscomgame_groupby_username = chesscomgames.groupby(["white_username", "black_username"]).agg(lambda x: list(x))
+for i in range(len(chesscomgames)):
+    whiteuser = chesscomgames.iloc[i]['white_username']
+    opening = chesscomgames.iloc[i]['Opening Name']
+for i in range(len(chesscomgames)):
+    blackuser = chesscomgames.iloc[i]['black_username']
+    opening = chesscomgames.iloc[i]['Opening Name']
 
-white_chesscomgame_df = []
-black_chesscomgame_df = []
-
-print(chesscomgame_groupby_username)
+white_users.to_csv('userbyitem.csv', index = True)
+black_users.to_csv('userbyitem.csv', index = True)
