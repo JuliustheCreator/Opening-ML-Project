@@ -1,12 +1,36 @@
-# Chess Opening Recommender System
-Thought of the idea of creating a chess opening recommendation system.
+# Chess Opening Recommendation System
 
-**I'm starting with a collaborative filtering model (compares user's opening choices to similar users' openings).**
+This project aims to create a chess opening recommendation system for chess players. Currently, the focus is on cleaning and preparing the dataset. The next phases of development will involve implementing a collaborative filtering model, content-based filtering model, and building the recommendation engine.
 
-This recommendation system uses the [Chess.com API](https://chesscom.readthedocs.io/en/latest/) to analyze the user's openings.
-User can easily be compared to other Chess.com users using a large Chess.com dataset (40,000 games)
+## Features
 
-In the future, if a content based filtering model were included *(making the entire system a hybrid system)*, then all opening positions in the ECO (Encyclopaedia of Chess Openings) would need to be vectorized in order to be compared to other openings
+1. Chess.com API integration to analyze the user's openings.
+2. A dataset of 40,000 Chess.com games for comparison and recommendations.
 
-**Layout**
-- [data_manipulation.py](https://github.com/JuliustheCreator/Opening-Recommendation/blob/master/system/data_manipulation.py) is used to retrieve user's games, as well as to clean and prepare the data from the large Chess.com dataset.
+## File Structure
+
+- `system/`
+    - `engine.py` (planned file for the recommendation system)
+    - `data_exploration.ipynb` (basic visualization of the dataset)
+    - `data/`
+        - `chesscomgames.csv` (dataset of 40,000 Chess.com games)
+        - `data_manipulation.py` (data cleaning and preparation)
+
+## Dependencies
+
+- pandas
+- sys
+- requests
+- chessdotcom
+- chess
+- io.StringIO
+
+## Current Work
+
+1. Cleaning and preparing the dataset for use in the recommendation system.
+
+## Future Plans
+
+1. Implement a collaborative filtering model to recommend openings based on similar users.
+2. Develop a content-based filtering model for a hybrid recommendation system.
+3. Build a recommendation engine to provide accurate and relevant opening suggestions for users.
