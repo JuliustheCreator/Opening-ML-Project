@@ -1,15 +1,12 @@
 import pandas as pd
+import numpy as np
 import sys
 import requests
 from chessdotcom import get_player_stats, get_player_game_archives
 import chess.pgn
 from io import StringIO
-
-'''
-Preparing LiChess Dataframe:
-    Will Be Used To Compare Openings With Respect To Rating (Collaborate-Based Filtering)
-'''
     
+
 username = input("Input Player Name: ")
 
 #Chooses Highest Rating Between Rapid and Blitz
@@ -29,14 +26,9 @@ def get_player_rating(username):
         return ratings[0]
     return ratings[1]
 
-'''
-The "new" variable is true if the player has not played longer than 3 months.
-If the player is "new" then bullet games will be used.
-'''
-
 new = False
 
-#Retrives Last 6 Months of Games Played; Checks To See if Player is New
+# Retrives Last 6 Months of Games Played; Checks To See if Player is New
 def get_player_games(username):
     all_games = []
     games = get_player_game_archives(username).json
@@ -53,19 +45,19 @@ def get_player_games(username):
         all_games.append(monthly_games)
     return all_games
 
-#Grabs ECO (Opening ID) From PGN
+# Grabs ECO (Opening ID) From PGN
 def get_ECO(pgn):
     pgn = StringIO(pgn)
     game = chess.pgn.read_game(pgn)
     ECO = game.headers['ECO']
     return ECO
 
-#Grabs FEN from Game
+# Grabs FEN from Game
 def get_FEN(game):
     FEN = game['fen']
     return FEN
 
-#Grabs Side (White or Black): 0 for Black, 1 for White
+# Grabs Side (White or Black): 0 for Black, 1 for White
 def get_side(game):
     side = game['white']['username']
     if side == username:
@@ -78,14 +70,14 @@ def check_for_win(game, side):
         return 1
     return 0
     
-#Grabs Game Variation & Time Control
+# Grabs Game Variation & Time Control
 def get_variation(game):
     time_control = game['time_class']
     variation = game['rules']
     #Variation should be "Chess" for Normal Games
     return time_control, variation
 
-#Grabs Opening Name from Game
+# Grabs Opening Name from Game
 def get_opening_name(pgn):
     pgn = StringIO(pgn)
     game = chess.pgn.read_game(pgn)
@@ -94,7 +86,7 @@ def get_opening_name(pgn):
     opening_name = ECO_url[31:]
     return opening_name.replace('-',' ')
 
-#Extracts Opening Name Without Using Chess Module
+# Extracts Opening Name Without Using Chess Module
 def extract_opening_name(pgn):
     pgn = pgn.split('\n')
     url = pgn[11]
@@ -203,7 +195,7 @@ blackdf['Win Rate'] = blackdf['Win Rate'].div(black_op_win_percent).multiply(100
 whitedf.drop(['Result'], axis = 1, inplace = True)
 blackdf.drop(['Result'], axis = 1, inplace = True)
 
-#Doesn't Return List Unlike "get_variation()"
+# Doesn't Return List Unlike "get_variation()"
 def validate_variation(game):
     pgn = StringIO(game['pgn'])
     game_pgn = chess.pgn.read_game(pgn)
@@ -214,38 +206,101 @@ def validate_variation(game):
     if variation != "normal":
         del game
 
-#Creating User Item Matrix using User Data
-print(whitedf)
-print(blackdf)
-
-whitedf = pd.DataFrame(index = whitedf['Opening Name'].unique(), columns = whitedf['Opening Name'].unique())
-blackdf = pd.DataFrame(index = blackdf['Opening Name'].unique(), columns = blackdf['Opening Name'].unique())
-
-'''
-Preparing Chess.com Dataframe:
-    Will Be Used To Compare Openings With Respect To Rating (Collaborate-Based Filtering)
-'''
-
-#Creating Chess.com Dataframe from 40,000 Games & 37,000+ Users
-chesscomgames = pd.read_csv('system/data/chesscomgames.csv')
+# Creating Chess.com Dataframe from 40,000 Games & 37,000+ Users
+chesscomgames = pd.read_csv('/Users/jrbroomfield1/Desktop/Opening-Recommendation-System/system/data/chesscomgames.csv')
 chesscomgames = chesscomgames[['white_username','black_username','pgn','white_rating','black_rating','white_result','black_result']]
 
-#Creating Opening Name for Each Game
+# Creating Opening Name for Each Game
 chesscomgames['Opening Name'] = chesscomgames['pgn'].apply(extract_opening_name)
 chesscomgames.drop(['pgn'], axis = 1, inplace = True)
 
-#Seperating User Profile for Each User in Chess.com Dataframe
+# Separating User Profile for Each User in Chess.com Dataframe
 white_users = pd.DataFrame(index = chesscomgames['white_username'].unique(), columns = chesscomgames['Opening Name'].unique())
 black_users = pd.DataFrame(index = chesscomgames['black_username'].unique(), columns = chesscomgames['Opening Name'].unique())
 
-#Creating Item Matrix using Chess.com Data
+white_users = white_users.fillna(0)
+black_users = black_users.fillna(0)
+
+# Creating Item Matrix using Chess.com Data
+for i in range(len(chesscomgames)):
+    whiteuser = chesscomgames.iloc[i]['white_username']
+    blackuser = chesscomgames.iloc[i]['black_username']
+    opening = chesscomgames.iloc[i]['Opening Name']
+    
+    white_users.at[whiteuser, opening] += 1
+    black_users.at[blackuser, opening] += 1
+
+# Calculating win rate for each opening
+chesscomgames['white_win'] = chesscomgames['white_result'].apply(lambda x: 1 if x == 'win' else 0)
+chesscomgames['black_win'] = chesscomgames['black_result'].apply(lambda x: 1 if x == 'win' else 0)
+
+white_win_rates = chesscomgames.groupby(['white_username', 'Opening Name']).agg({'white_win': 'mean'})
+black_win_rates = chesscomgames.groupby(['black_username', 'Opening Name']).agg({'black_win': 'mean'})
+
+white_win_rates.rename(columns={'white_win': 'win_rate'}, inplace=True)
+black_win_rates.rename(columns={'black_win': 'win_rate'}, inplace=True)
+
+white_win_rates.reset_index(inplace=True)
+black_win_rates.reset_index(inplace=True)
+
+# Merging win rates with user-item matrices
+white_users = white_users.merge(white_win_rates, how='left', left_index=True, right_on='white_username')
+black_users = black_users.merge(black_win_rates, how='left', left_index=True, right_on='black_username')
+
+white_users.to_csv('white_userbyitem.csv', index=True)
+black_users.to_csv('black_userbyitem.csv', index=True)
+
+for opening in chesscomgames['Opening Name'].unique():
+    white_users[opening + '_count'] = 0
+    black_users[opening + '_count'] = 0
+    white_users[opening + '_win_rate'] = np.nan
+    black_users[opening + '_win_rate'] = np.nan
 
 for i in range(len(chesscomgames)):
     whiteuser = chesscomgames.iloc[i]['white_username']
-    opening = chesscomgames.iloc[i]['Opening Name']
-for i in range(len(chesscomgames)):
     blackuser = chesscomgames.iloc[i]['black_username']
     opening = chesscomgames.iloc[i]['Opening Name']
+    white_win = chesscomgames.iloc[i]['white_win']
+    black_win = chesscomgames.iloc[i]['black_win']
 
-white_users.to_csv('userbyitem.csv', index = True)
-black_users.to_csv('userbyitem.csv', index = True)
+    white_users.at[whiteuser, opening + '_count'] += 1
+    black_users.at[blackuser, opening + '_count'] += 1
+
+    if white_win:
+        white_users.at[whiteuser, opening + '_win_rate'] = ((white_users.at[whiteuser, opening + '_win_rate'] * (white_users.at[whiteuser, opening + '_count'] - 1)) + 1) / white_users.at[whiteuser, opening + '_count']
+    else:
+        white_users.at[whiteuser, opening + '_win_rate'] = (white_users.at[whiteuser, opening + '_win_rate'] * (white_users.at[whiteuser, opening + '_count'] - 1)) / white_users.at[whiteuser, opening + '_count']
+
+    if black_win:
+        black_users.at[blackuser, opening + '_win_rate'] = ((black_users.at[blackuser, opening + '_win_rate'] * (black_users.at[blackuser, opening + '_count'] - 1)) + 1) / black_users.at[blackuser, opening + '_count']
+    else:
+        black_users.at[blackuser, opening + '_win_rate'] = (black_users.at[blackuser, opening + '_win_rate'] * (black_users.at[blackuser, opening + '_count'] - 1)) / black_users.at[blackuser, opening + '_count']
+
+
+def transform_user_data(users, side):
+    transformed_data = []
+
+    for index, row in users.iterrows():
+        for col in row.index:
+            if col.endswith('_win_rate'):
+                opening_name = col[:-9]
+                opening_freq = row[opening_name]
+                opening_win_rate = row[col]
+                if opening_freq > 0:
+                    transformed_data.append({
+                        'Username': row['username'],
+                        'Side': side,
+                        'Opening Name': opening_name,
+                        'Frequency': opening_freq,
+                        'Win Rate': opening_win_rate
+                    })
+
+    return pd.DataFrame(transformed_data)
+
+transformed_white_users = transform_user_data(white_users, 'white')
+transformed_black_users = transform_user_data(black_users, 'black')
+
+transformed_users = pd.concat([transformed_white_users, transformed_black_users])
+transformed_users.to_csv('transformed_userbyitem.csv', index=False)
+
+print(transformed_users)
