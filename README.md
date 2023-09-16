@@ -1,36 +1,45 @@
 # Chess Opening Recommendation System
 
-This project aims to create a chess opening recommendation system for chess players. Currently, the focus is on cleaning and preparing the dataset. The next phases of development will involve implementing a collaborative filtering model, content-based filtering model, and building the recommendation engine.
+This project aims to create a chess opening recommendation system for chess players. It is built to help chess enthusiasts and learners identify openings that they might find interesting or useful.
 
-## Features
-
-1. Chess.com API integration to analyze the user's openings.
-2. A dataset of 40,000 Chess.com games for comparison and recommendations.
+## Getting Started
+1. Clone the repository.
+2. Install necessary dependencies.
+3. Run main.py to initialize the system.
 
 ## File Structure
 
-- `system/`
-    - `engine.py` (planned file for the recommendation system)
-    - `data_exploration.ipynb` (basic visualization of the dataset)
-    - `data/`
-        - `chesscomgames.csv` (dataset of 40,000 Chess.com games)
-        - `data_manipulation.py` (data cleaning and preparation)
-
-## Dependencies
-
-- pandas
-- sys
-- requests
-- chessdotcom
-- chess
-- io.StringIO
+`main/`
+- `main.py` **- main driver of the program**
+  
+- `api.py` **- interface for the chess.com api**
+  
+- `engine.py` **- (under development) the core recommendation system**
+  
+- `processing.py` **- data transformation and preprocessing utilities**
+  
+- `data/`
+  
+    - `dataset.parquet` **- processed dataset in Parquet format**
+      
+    - `dataset.py` **- script used to build the dataset**
+      
+- `misc/`
+  
+    - `legacy.py` **- holds deprecated code for reference**
 
 ## Current Work
+- **Recommendation Engine:** The core recommendation system, potentially leveraging PyTorch for deep learning, is still under active development.
+  
+- **Data Exploration:** Plans to dive deeper into the dataset to extract more insights and refine the recommendation process.
+  
+- **Julia Integration:** Anticipate in-depth analysis using opening trees, with Julia being the technology of choice.
+  
+- **Web Deployment:** Post completion, the engine will be wrapped into a web interface using Django, making it accessible to a wider audience.
 
-1. Cleaning and preparing the dataset for use in the recommendation system.
+## Contributions
+This project is a personal passion project. However, feedback, insights, or pull requests are always welcome.
 
-## Future Plans
+## License
+This project is open source. Feel free to use, modify, and distribute as you see fit.
 
-1. Implement a collaborative filtering model to recommend openings based on similar users.
-2. Develop a content-based filtering model for a hybrid recommendation system.
-3. Build a recommendation engine to provide accurate and relevant opening suggestions for users.
