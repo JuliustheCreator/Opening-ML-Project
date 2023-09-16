@@ -7,7 +7,15 @@ HEADERS = {
     'User-Agent': 'Chess.py (Python 3.9) (username: smonkr6; contact: broomfieldjuliusr@gmail.com)' #This is my contact email
     }
 
+ECO = pd.read_csv(
+    'ECO.csv', 
+    header = None, 
+    names = ["ECO", "Opening"]
+    ).set_index('ECO').to_dict()['Opening']
+
 Values = namedtuple('values', ['frequency', 'win_rate'])
+
+dataset = pd.DataFrame()
 
 def create_matrix(games, username):
     database = {}
@@ -19,6 +27,10 @@ def create_matrix(games, username):
         if is_win: database[name]['wins'] += 1   
 
     df = pd.DataFrame(database).T
+
+    if 'wins' not in df.columns: df['wins'] = 0
+    if 'played' not in df.columns: df['played'] = 0
+
     df['win_rate'] = (df['wins'] / df['played']) * 100
     df['frequency'] = (df['played'] / len(database)) * 100
 
@@ -41,14 +53,28 @@ def fetch_games_from_archive(archive_url):
 
 
 def get_opening_info(game, username):
+    # if 'pgn' not in game:
+    #     return None, None
+    # pgn = game['pgn'].split('\n')
+    # url = next((data for data in pgn if "ECOUrl" in data), pgn[11])
+    # name = url.split('/')[-1][:-2].replace('-',' ')
+
+    # if game['white']['username'] == username: is_win = game['white']['result'] == 'win'
+    # else: is_win = game['black']['result'] == 'win'
+    # return name, is_win
+
     if 'pgn' not in game:
         return None, None
-    pgn = game['pgn'].split('\n')
-    url = next((data for data in pgn if "ECOUrl" in data), pgn[11])
-    name = url.split('/')[-1][:-2].replace('-',' ')
 
-    if game['white']['username'] == username: is_win = game['white']['result'] == 'win'
-    else: is_win = game['black']['result'] == 'win'
+    code = game.get('ECO', None)
+    name = ECO.get(code, "Unknown Opening")
+
+
+    if game['white']['username'] == username: 
+        is_win = game['white']['result'] == 'win'
+    else: 
+        is_win = game['black']['result'] == 'win'
+    
     return name, is_win
 
 url = f"https://api.chess.com/pub/club/chess-com-developer-community/members"
@@ -61,8 +87,13 @@ members = [object['username'] for key in keys for object in response.json()[key]
 
 dataset = pd.DataFrame()
 
-for member in members:
-    archives = fetch_archives(member)
+for i, member in enumerate(members):
+    try:
+        archives = fetch_archives(member)
+
+    except:
+        dataset.to_parquet('dataset.parquet', engine='pyarrow')
+
     container = []
 
     for archive in archives:
@@ -71,5 +102,9 @@ for member in members:
         
     matrix = create_matrix(container, member)
     dataset = pd.concat([dataset, matrix])
+
+    print(i)
+
+print(dataset)
 
 dataset.to_parquet('dataset.parquet', engine='pyarrow')

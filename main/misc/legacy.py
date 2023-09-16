@@ -5,99 +5,98 @@ import requests
 from chessdotcom import get_player_stats, get_player_game_archives
 import chess.pgn
 from io import StringIO
-from functions import *
     
 
 username = input("Input Player Name: ")
 
-# #Chooses Highest Rating Between Rapid and Blitz
-# def get_player_rating(username):
-#     try:
-#         playerinfo = get_player_stats(username).json
-#     except:
-#         print("User Not Found.")
-#         return None
+#Chooses Highest Rating Between Rapid and Blitz
+def get_player_rating(username):
+    try:
+        playerinfo = get_player_stats(username).json
+    except:
+        print("User Not Found.")
+        return None
 
-#     timecontrols = ['chess_rapid', 'chess_blitz']
-#     ratings = []
+    timecontrols = ['chess_rapid', 'chess_blitz']
+    ratings = []
 
-#     for timecontrol in timecontrols:
-#         ratings.append(playerinfo['stats'][timecontrol]['last']['rating'])
-#     if ratings[0] > ratings[1]:
-#         return ratings[0]
-#     return ratings[1]
+    for timecontrol in timecontrols:
+        ratings.append(playerinfo['stats'][timecontrol]['last']['rating'])
+    if ratings[0] > ratings[1]:
+        return ratings[0]
+    return ratings[1]
 
-# new = False
+new = False
 
-# # Retrives Last 6 Months of Games Played; Checks To See if Player is New
-# def get_player_games(username):
-#     all_games = []
-#     games = get_player_game_archives(username).json
-#     months_played = len(games['archives'])
-#     if months_played < 6:
-#         urls = games['archives']
-#         if months_played < 3:
-#             new = True
-#     else:
-#         urls = games['archives'][-6:]
+# Retrives Last 6 Months of Games Played; Checks To See if Player is New
+def get_player_games(username):
+    all_games = []
+    games = get_player_game_archives(username).json
+    months_played = len(games['archives'])
+    if months_played < 6:
+        urls = games['archives']
+        if months_played < 3:
+            new = True
+    else:
+        urls = games['archives'][-6:]
 
-#     for url in urls:
-#         monthly_games = requests.get(url).json()
-#         all_games.append(monthly_games)
-#     return all_games
+    for url in urls:
+        monthly_games = requests.get(url).json()
+        all_games.append(monthly_games)
+    return all_games
 
-# # Grabs ECO (Opening ID) From PGN
-# def get_ECO(pgn):
-#     pgn = StringIO(pgn)
-#     game = chess.pgn.read_game(pgn)
-#     ECO = game.headers['ECO']
-#     return ECO
+# Grabs ECO (Opening ID) From PGN
+def get_ECO(pgn):
+    pgn = StringIO(pgn)
+    game = chess.pgn.read_game(pgn)
+    ECO = game.headers['ECO']
+    return ECO
 
-# # Grabs FEN from Game
-# def get_FEN(game):
-#     FEN = game['fen']
-#     return FEN
+# Grabs FEN from Game
+def get_FEN(game):
+    FEN = game['fen']
+    return FEN
 
-# # Grabs Side (White or Black): 0 for Black, 1 for White
-# def get_side(game):
-#     side = game['white']['username']
-#     if side == username:
-#         return 'white'
-#     return 'black'
+# Grabs Side (White or Black): 0 for Black, 1 for White
+def get_side(game):
+    side = game['white']['username']
+    if side == username:
+        return 'white'
+    return 'black'
 
-# #Checks If Player Won
-# def check_for_win(game, side):
-#     if game[side]['result'] == 'win':
-#         return 1
-#     return 0
+#Checks If Player Won
+def check_for_win(game, side):
+    if game[side]['result'] == 'win':
+        return 1
+    return 0
     
-# # Grabs Game Variation & Time Control
-# def get_variation(game):
-#     time_control = game['time_class']
-#     variation = game['rules']
-#     #Variation should be "Chess" for Normal Games
-#     return time_control, variation
+# Grabs Game Variation & Time Control
+def get_variation(game):
+    time_control = game['time_class']
+    variation = game['rules']
+    #Variation should be "Chess" for Normal Games
+    return time_control, variation
 
-# # Grabs Opening Name from Game
-# def get_opening_name(pgn):
-#     pgn = StringIO(pgn)
-#     game = chess.pgn.read_game(pgn)
-#     ECO_url = game.headers['ECOUrl']
-#     #Grabbing Substring (Contains Opening Name) from ECO Url 
-#     opening_name = ECO_url[31:]
-#     return opening_name.replace('-',' ')
+# Grabs Opening Name from Game
+def get_opening_name(pgn):
+    pgn = StringIO(pgn)
+    game = chess.pgn.read_game(pgn)
+    ECO_url = game.headers['ECOUrl']
+    #Grabbing Substring (Contains Opening Name) from ECO Url 
+    opening_name = ECO_url[31:]
+    return opening_name.replace('-',' ')
 
-# # Extracts Opening Name Without Using Chess Module
-# def extract_opening_name(pgn):
-#     pgn = pgn.split('\n')
-#     url = pgn[11]
-#     for data in pgn:
-#         if data[1:7] == "ECOUrl":
-#             url = data
-#             break
-#     name = url.split('/')[-1] 
-#     name = name[:-2].replace('-',' ')
-#     return name
+# Extracts Opening Name Without Using Chess Module
+def extract_opening_name(pgn):
+    pgn = pgn.split('\n')
+    url = pgn[11]
+    for data in pgn:
+        if data[1:7] == "ECOUrl":
+            url = data
+            break
+    name = url.split('/')[-1] 
+    name = name[:-2].replace('-',' ')
+    return name
 
 #Collecting All Recently Played Openings
 white_eco = []
