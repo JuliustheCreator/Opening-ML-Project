@@ -33,8 +33,6 @@ This project aims to create a chess opening recommendation system for chess play
   
 - **Data Exploration:** Plans to dive deeper into the dataset to extract more insights and refine the recommendation process.
   
-- **Julia Integration:** Anticipate in-depth analysis using opening trees, with Julia being the technology of choice.
-  
 - **Web Deployment:** Post completion, the engine will be wrapped into a web interface using Django, making it accessible to a wider audience.
 
 ## Contributions
